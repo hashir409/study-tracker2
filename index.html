@@ -530,7 +530,7 @@ function viewHome() {
   let h = banners();
   h += '<div class="section-title" style="margin-top:0"><h2>Key numbers</h2><span class="muted small">Updated live as you work</span></div><div class="kpis">' +
     kpi('Overall complete', st.complete + '%', 'Learnt + practised + proven, all topics', 'neutral', '') +
-    kpi('Coverage', st.coverage + '%', st.learnt + ' of ' + st.n + ' topics learnt · target 100% by 31 Jan', tone(st.coverage, ec), toneText(st.coverage, ec) + ' (plan: ' + ec + '%)') +
+    kpi('Coverage', st.coverage + '%', st.learnt + ' of ' + st.n + ' topics learnt · target 100% by ' + fmt(PHASES[0].to), tone(st.coverage, ec), toneText(st.coverage, ec) + ' (plan: ' + ec + '%)') +
     kpi('Green topics', st.greenPct + '%', st.green + (st.green === 1 ? ' topic' : ' topics') + ' proven at 85%+', tone(st.greenPct, eg), toneText(st.greenPct, eg) + ' (plan: ' + eg + '%)') +
     kpi('Past-paper average', l3 == null ? '—' : l3 + '%', 'Last 3 timed papers, each subject', l3 == null ? 'neutral' : (l3 >= 85 ? 'good' : l3 >= 70 ? 'warn' : 'bad'), l3 == null ? 'No papers yet' : (l3 >= 85 ? 'At target' : (85 - l3) + '% below target')) +
     kpi('Finished on time', otr == null ? '—' : otr + '%', 'Timed papers finished with 5 min spare', otr == null ? 'neutral' : (otr >= 90 ? 'good' : otr >= 60 ? 'warn' : 'bad'), otr == null ? 'No timed papers yet' : (otr >= 90 ? 'Good pace' : 'Work on speed')) +
@@ -745,6 +745,7 @@ function render() {
   PHASES = buildPhases();
   if (!PROFILE.name) { document.getElementById('app').innerHTML = viewSignup(); return; }
   if (!PROFILE.board) { document.getElementById('app').innerHTML = viewBoard(); return; }
+  if (!PROFILE.examAsked) { document.getElementById('app').innerHTML = viewExam(); return; }
   if (!CFG.subjects.length) { document.getElementById('app').innerHTML = emptyHeader() + '<main>' + viewAdd() + '</main>'; return; }
   const ae = document.activeElement; const fkey = ae && ae.dataset ? ae.dataset.fkey : null;
   if (!SUBJ[VIEW] && ['home', 'daily', 'papers', 'mistakes', 'review', 'addsubj', 'prefs'].indexOf(VIEW) < 0) VIEW = 'home';
@@ -1013,6 +1014,38 @@ document.addEventListener('submit', e => {
   if (!saveCustom()) { msg.textContent = 'This browser could not save.'; return; }
   location.hash = '#' + s.key; location.reload();
 });
+function viewExam() {
+  const months = MON.map((m, i) => '<option value="' + (i + 1) + '">' + m + '</option>').join('');
+  const sel = 'width:100%;padding:10px 12px;border:1px solid #D5DAE5;border-radius:10px;font:inherit;background:#fff;color:inherit';
+  return '<main style="max-width:520px;margin:24px auto"><div class="card"><h1 style="font-size:22px;margin:0 0 4px">How many days are left for your exam?</h1><div class="muted" style="margin-bottom:14px">Enter the date of your first paper. Your tracker plan is built backwards from it.</div>' +
+    '<form data-xform="exam" class="grid"><div class="form"><div class="field" style="width:90px"><label for="ex-d">Day</label><input id="ex-d" name="d" type="number" min="1" max="31" inputmode="numeric" data-xexam required></div>' +
+    '<div class="field" style="width:130px"><label for="ex-m">Month</label><select id="ex-m" name="m" data-xexam required style="' + sel + '"><option value="">Month</option>' + months + '</select></div>' +
+    '<div class="field" style="width:110px"><label for="ex-y">Year</label><input id="ex-y" name="y" type="number" min="2026" max="2035" inputmode="numeric" data-xexam required></div></div>' +
+    '<div id="ex-prev" class="small" style="min-height:20px"></div><div class="form"><button class="btn pri" type="submit">Continue</button><button class="btn" type="button" data-xact="skipexam">I do not know yet</button></div></form></div></main>';
+}
+function examIso(f) {
+  const d = +f.d, m = +f.m, y = +f.y; if (!d || !m || !y) return '';
+  const dt = new Date(y, m - 1, d); if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return '';
+  return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+}
+function finishExam() {
+  try { localStorage.setItem(PKEY, JSON.stringify(Object.assign({}, PROFILE, { examAsked: true }))); } catch (x) {}
+  location.hash = CFG.subjects.length ? '#home' : '#addsubj'; location.reload();
+}
+document.addEventListener('input', e => {
+  const el = e.target; if (!el.dataset || el.dataset.xexam === undefined) return;
+  const pv = document.getElementById('ex-prev'); if (!pv) return;
+  const iso = examIso(Object.fromEntries(new FormData(el.closest('form')).entries()));
+  if (!iso) { pv.textContent = ''; return; }
+  const n = diffDays(today(), iso); pv.textContent = n < 0 ? 'That date has already passed.' : n + ' days left'; pv.style.color = n < 0 ? '#A4262A' : '';
+});
+document.addEventListener('submit', e => {
+  const f = e.target; if (!f.dataset || f.dataset.xform !== 'exam') return; e.preventDefault();
+  const iso = examIso(Object.fromEntries(new FormData(f).entries())); const pv = document.getElementById('ex-prev');
+  if (!iso || diffDays(today(), iso) < 0) { pv.textContent = 'Enter a real date from today onwards.'; pv.style.color = '#A4262A'; return; }
+  S.settings.examDate = iso; save(); finishExam();
+});
+document.addEventListener('click', e => { const el = e.target.closest('[data-xact]'); if (el && el.dataset.xact === 'skipexam') finishExam(); });
 /* ---------- events ---------- */
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
