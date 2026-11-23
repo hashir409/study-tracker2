@@ -200,12 +200,8 @@ svg text{font-family:inherit}
 <script>
 'use strict';
 const CFG = {"key": "fresh", "name": "", "title": "Study Tracker", "level": "", "levelShort": "", "session": "", "target": "", "examDate": "", "weeklyHours": 15, "dailyMins": 120, "syllabusNote": "", "subjects": []};
-const ACCKEY = 'studytracker-accounts', SESSKEY = 'studytracker-session';
-const ACCOUNTS = (() => { try { return JSON.parse(localStorage.getItem(ACCKEY)) || []; } catch (e) { return []; } })();
-const ACCOUNT = (() => { let id = ''; try { id = localStorage.getItem(SESSKEY) || ''; } catch (e) {} return ACCOUNTS.find(a => a.id === id) || null; })();
-if (ACCOUNT) CFG.key = 'fresh-' + ACCOUNT.id;
 const KEY = 'studytracker-v1:' + CFG.key;
-const START = (() => { const t0 = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }; try { const p = JSON.parse(localStorage.getItem('studytracker-profile:' + CFG.key)); return (p && p.start) || t0(); } catch (e) { return t0(); } })();
+const START = (() => { try { const p = JSON.parse(localStorage.getItem('studytracker-profile:' + CFG.key)); return (p && p.start) || '2026-10-19'; } catch (e) { return '2026-10-19'; } })();
 const CKEY = 'studytracker-custom:' + CFG.key, HKEY = 'studytracker-hidden:' + CFG.key, PKEY = 'studytracker-profile:' + CFG.key;
 const rd = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } };
 const CUSTOM = rd(CKEY, []), HIDDEN = rd(HKEY, []), PROFILE = rd(PKEY, {});
@@ -456,24 +452,22 @@ function scoreChart(subj) {
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="' + esc(s.name) + ' past-paper scores over time">' + g + '</svg><div class="legend" style="margin-top:4px">' + leg + '</div>';
 }
 function heatmap() {
-  const dm = dayMins(); const t = today(); const ex = isDate(S.settings.examDate) ? S.settings.examDate : '';
+  const dm = dayMins(); const t = today();
   const first = weekStart(START);
   let lastWs = weekStart(isDate(S.settings.examDate) && S.settings.examDate > t ? S.settings.examDate : addDays(t, 14));
-  let weeks = Math.floor(diffDays(first, lastWs) / 7) + 1; weeks = clamp(weeks, 4, 80);
+  let weeks = Math.floor(diffDays(first, lastWs) / 7) + 1; weeks = clamp(weeks, 4, 40);
   const cs = 14, gp = 3, L = 26, T = 18;
   const W = L + weeks * (cs + gp), H = T + 7 * (cs + gp);
   let g = ''; let lastMonth = -1;
   for (let w = 0; w < weeks; w++) {
-    const ws = addDays(first, w * 7); let mo = -1;
-    if (w === 0) mo = parseD(ws).getMonth();
-    for (let k = 0; k < 7; k++) { const dd = parseD(addDays(ws, k)); if (dd.getDate() === 1) mo = dd.getMonth(); }
-    if (mo !== -1 && mo !== lastMonth) { g += '<text x="' + (L + w * (cs + gp)) + '" y="11" font-size="10.5" fill="#4A5468">' + MON[mo] + '</text>'; lastMonth = mo; }
+    const ws = addDays(first, w * 7); const mo = parseD(ws).getMonth();
+    if (mo !== lastMonth) { g += '<text x="' + (L + w * (cs + gp)) + '" y="11" font-size="10.5" fill="#4A5468">' + MON[mo] + '</text>'; lastMonth = mo; }
     for (let d = 0; d < 7; d++) {
       const day = addDays(ws, d); const mins = dm[day] || 0; const act = S.activity[day] || 0;
       let fill = '#EEF1F6';
       if (day > t) fill = '#F7F8FB';
       else if (mins >= 120) fill = '#146C3E'; else if (mins >= 60) fill = '#2FA866'; else if (mins >= 30) fill = '#7BCB9C'; else if (mins > 0 || act > 0) fill = '#BFE6CD';
-      const stroke = day === ex ? ' stroke="#B3261E" stroke-width="2"' : day === t ? ' stroke="#1B2340" stroke-width="1.5"' : '';
+      const stroke = day === t ? ' stroke="#1B2340" stroke-width="1.5"' : '';
       g += '<rect x="' + (L + w * (cs + gp)) + '" y="' + (T + d * (cs + gp)) + '" width="' + cs + '" height="' + cs + '" rx="3" fill="' + fill + '"' + stroke + '><title>' + fmtY(day) + ': ' + mins + ' min</title></rect>';
     }
   }
@@ -500,7 +494,7 @@ let TIMER = { running: false, startedAt: 0, elapsed: 0, subj: (CFG.subjects[0] |
 function header() {
   const st = stats(); const dte = daysToExam(); const ph = PHASES[phaseIndex(today())];
   const initials = CFG.name.split(' ').map(w => w[0]).slice(0, 2).join('');
-  return '<header class="top"><button type="button" class="btn sm" data-xact="logout" style="position:absolute;top:12px;right:14px;z-index:3;background:#fff;color:#14213D;border:0;font-weight:700">Log out</button><span class="xs" style="position:absolute;top:18px;right:88px;z-index:3;color:#fff;opacity:.75">v6</span><svg class="deco" width="360" height="360" viewBox="0 0 360 360" aria-hidden="true"><circle cx="180" cy="180" r="150" fill="none" stroke="#fff" stroke-width="40"/><circle cx="180" cy="180" r="70" fill="none" stroke="#fff" stroke-width="24"/></svg>' +
+  return '<header class="top"><svg class="deco" width="360" height="360" viewBox="0 0 360 360" aria-hidden="true"><circle cx="180" cy="180" r="150" fill="none" stroke="#fff" stroke-width="40"/><circle cx="180" cy="180" r="70" fill="none" stroke="#fff" stroke-width="24"/></svg>' +
     '<div class="top-in"><div class="who"><div class="avatar">' + esc(initials) + '</div><div style="min-width:0"><h1>' + esc(CFG.name) + '</h1>' +
     '<div class="sub">' + [CFG.level, CFG.session, CFG.target ? 'target ' + CFG.target : ''].filter(Boolean).map(esc).join(' · ') + '</div>' +
     '<div class="chips">' + CFG.subjects.map(s => '<span class="chip" style="background:' + s.color + '">' + esc(s.name + (s.code ? ' ' + s.code : '')) + '</span>').join('') + '</div></div></div>' +
@@ -566,9 +560,9 @@ function viewHome() {
   h += '<div class="two" style="margin-top:22px"><div class="card"><h2>Focus next</h2>' + (focus.length ? focus.map(it => '<div class="focus-item"><span class="sw" style="background:' + SUBJ[it[1].subj].color + '"></span><div style="flex:1;min-width:0"><div style="font-weight:600">' + esc(it[1].n + ' ' + it[1].t) + '</div><div class="xs muted">' + esc(SUBJ[it[1].subj].name) + ' · ' + esc(it[2]) + '</div></div><button class="btn sm" data-act="go" data-v="' + it[1].subj + '">Open</button></div>').join('') : '<div class="empty">Nothing urgent. Tick topics as you learn them and the most important ones will show up here.</div>') + '</div>' +
     '<div class="card"><h2>Focus timer</h2>' + timerHTML() + '</div></div>';
 
-  h += '<div class="card" style="margin-top:14px"><h2>Study calendar</h2><div class="muted small" style="margin-bottom:8px">Each square is a day. Darker green = more focused minutes logged. The red outline is your first exam day.</div>' + heatmap() + '</div>';
+  h += '<div class="card" style="margin-top:14px"><h2>Study calendar</h2><div class="muted small" style="margin-bottom:8px">Each square is a day. Darker green = more focused minutes logged.</div>' + heatmap() + '</div>';
 
-  h += '<div class="card" style="margin-top:14px"><h2>The road to the exam</h2>' + (isDate(S.settings.examDate) ? '<div class="muted small" style="margin:2px 0 10px">First exam: ' + fmtY(S.settings.examDate) + ' · ' + Math.max(0, diffDays(today(), S.settings.examDate)) + ' days to go</div>' : '<div class="muted small" style="margin:2px 0 10px">Set your first exam date in Settings to plan exactly.</div>') + '<div class="phase-row">' + PHASES.map((p, i) => '<div class="phase' + (i === pi ? ' now' : i < pi ? ' done' : '') + '"><span class="xs" style="font-weight:700">' + fmt(p.from) + ' – ' + (i === 3 ? (isDate(S.settings.examDate) ? fmt(S.settings.examDate) : 'exams') : fmt(p.to)) + '</span><b>' + esc(p.name) + '</b>' + esc(p.job) + '</div>').join('') + '</div></div>';
+  h += '<div class="card" style="margin-top:14px"><h2>The road to the exam</h2><div class="phase-row">' + PHASES.map((p, i) => '<div class="phase' + (i === pi ? ' now' : i < pi ? ' done' : '') + '"><span class="xs" style="font-weight:700">' + fmt(p.from) + ' – ' + (i === 3 ? 'exams' : fmt(p.to)) + '</span><b>' + esc(p.name) + '</b>' + esc(p.job) + '</div>').join('') + '</div></div>';
 
   h += '<div class="card" style="margin-top:14px"><h2>Badges</h2><div class="badges">' + badges().map(b => '<div class="badge' + (b[2] ? ' got' : '') + '"><span class="medal"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>' + esc(b[0]) + '</b>' + esc(b[1]) + '</span></div>').join('') + '</div></div>';
   return h;
@@ -749,7 +743,6 @@ function viewSettings() {
 /* ---------- render ---------- */
 function render() {
   PHASES = buildPhases();
-  if (!ACCOUNT) { document.getElementById('app').innerHTML = viewAuth(); return; }
   if (!PROFILE.name) { document.getElementById('app').innerHTML = viewSignup(); return; }
   if (!PROFILE.board) { document.getElementById('app').innerHTML = viewBoard(); return; }
   if (!PROFILE.examAsked) { document.getElementById('app').innerHTML = viewExam(); return; }
@@ -765,7 +758,7 @@ function render() {
   else if (VIEW === 'review') body = viewReview();
   else if (VIEW === 'addsubj') body = viewAdd();
   else body = viewSettings();
-  document.getElementById('app').innerHTML = header() + nav() + '<main>' + body + '<div class="footer">' + esc(CFG.name) + '\'s study tracker · saved on this device · version 6' + '</div></main>';
+  document.getElementById('app').innerHTML = header() + nav() + '<main>' + body + '<div class="footer">' + esc(CFG.name) + '\'s study tracker · saved on this device' + '</div></main>';
   if (fkey) { const el = document.querySelector('[data-fkey="' + CSS.escape(fkey) + '"]'); if (el) { el.focus(); if (el.select) try { el.select(); } catch (e) {} } }
 }
 function go(v) { VIEW = v; FILTER = 'all'; try { history.replaceState(null, '', '#' + v); } catch (e) {} render(); window.scrollTo(0, 0); }
@@ -939,7 +932,7 @@ function viewSignup() {
 }
 function emptyHeader() {
   const ini = CFG.name.split(' ').map(w => w[0]).slice(0, 2).join('');
-  return '<header class="top"><button type="button" class="btn sm" data-xact="logout" style="position:absolute;top:12px;right:14px;z-index:3;background:#fff;color:#14213D;border:0;font-weight:700">Log out</button><span class="xs" style="position:absolute;top:18px;right:88px;z-index:3;color:#fff;opacity:.75">v6</span><div class="top-in"><div class="who"><div class="avatar">' + esc(ini) + '</div><div style="min-width:0"><h1>' + esc(CFG.name) + '</h1><div class="sub">Welcome. Add your first subject below and your tracker is built.</div></div></div></div></header>';
+  return '<header class="top"><div class="top-in"><div class="who"><div class="avatar">' + esc(ini) + '</div><div style="min-width:0"><h1>' + esc(CFG.name) + '</h1><div class="sub">Welcome. Add your first subject below and your tracker is built.</div></div></div></div></header>';
 }
 function addCta() {
   return '<div class="card" style="margin-top:14px"><h2>Add a subject</h2><div class="small muted" style="margin:6px 0 12px">Upload a syllabus or paste topics and a new tracker is built for you.</div><button class="btn pri" data-xact="goadd">Add a subject</button></div>';
@@ -1053,69 +1046,6 @@ document.addEventListener('submit', e => {
   S.settings.examDate = iso; save(); finishExam();
 });
 document.addEventListener('click', e => { const el = e.target.closest('[data-xact]'); if (el && el.dataset.xact === 'skipexam') finishExam(); });
-let AUTHMODE = ACCOUNTS.length ? 'login' : 'signup';
-function fnv(t) { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(16); }
-async function pwHash(pw, salt) {
-  if (!(window.crypto && crypto.subtle)) return 'x' + fnv(salt + ':' + pw) + fnv(pw + ':' + salt);
-  const enc = new TextEncoder(); const key = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode(salt), iterations: 100000, hash: 'SHA-256' }, key, 256);
-  return Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-function viewAuth() {
-  const su = AUTHMODE === 'signup';
-  return '<main style="max-width:480px;margin:32px auto"><div class="card"><h1 style="font-size:24px;margin:0 0 4px">Study Tracker</h1><div class="muted" style="margin-bottom:14px">' + (su ? 'Create your account' : 'Log in to your account') + '</div>' +
-    '<form data-xform="auth" class="grid">' +
-    (su ? '<div class="field"><label for="au-name">Your name</label><input id="au-name" name="name" autocomplete="name" required></div>' : '') +
-    '<div class="field"><label for="au-user">Email or username</label><input id="au-user" name="user" autocomplete="username" autocapitalize="none" required></div>' +
-    pwField('au-pw', 'pw', 'Password', su ? 'new-password' : 'current-password') +
-    (su ? pwField('au-pw2', 'pw2', 'Confirm password', 'new-password') : '') +
-    '<button class="btn pri" type="submit">' + (su ? 'Create account' : 'Log in') + '</button><div class="xs" id="au-msg" style="min-height:18px"></div></form>' +
-    '<div class="small" style="margin-top:6px">' + (su ? 'Already have an account? <button type="button" class="btn sm" data-xact="authmode" data-m="login">Log in</button>' : 'New here? <button type="button" class="btn sm" data-xact="authmode" data-m="signup">Create account</button>') + '</div>' +
-    '<div class="xs muted" style="margin-top:12px">Accounts are saved on this device, in this browser. A forgotten password cannot be recovered.</div></div></main>';
-}
-document.addEventListener('submit', async e => {
-  const f = e.target; if (!f.dataset || f.dataset.xform !== 'auth') return; e.preventDefault();
-  const d = Object.fromEntries(new FormData(f).entries()); const msg = document.getElementById('au-msg');
-  const bad = t => { msg.textContent = t; msg.style.color = '#A4262A'; };
-  const user = (d.user || '').trim().toLowerCase();
-  if (!user) return bad('Enter your email or username.');
-  if (AUTHMODE === 'signup') {
-    const name = (d.name || '').trim(); if (!name) return bad('Enter your name.');
-    if ((d.pw || '').length < 6) return bad('Password must be at least 6 characters.');
-    if (d.pw !== d.pw2) return bad('The two passwords do not match.');
-    if (ACCOUNTS.some(a => a.user === user)) return bad('This email or username is already used. Log in instead.');
-    const id = uid(), salt = uid() + uid(); const hash = await pwHash(d.pw, salt);
-    ACCOUNTS.push({ id: id, user: user, name: name, salt: salt, hash: hash, created: today() });
-    try { localStorage.setItem(ACCKEY, JSON.stringify(ACCOUNTS)); localStorage.setItem(SESSKEY, id); } catch (x) { ACCOUNTS.pop(); return bad('This browser could not save the account.'); }
-    const nk = 'fresh-' + id;
-    ['studytracker-v1:', 'studytracker-custom:', 'studytracker-hidden:', 'studytracker-profile:'].forEach(pre => { try { const v = ACCOUNTS.length === 1 ? localStorage.getItem(pre + 'fresh') : null; if (v) localStorage.setItem(pre + nk, v); } catch (x) {} });
-    let prof = {}; try { prof = JSON.parse(localStorage.getItem('studytracker-profile:' + nk)) || {}; } catch (x) {}
-    prof.name = name; prof.start = prof.start || today();
-    try { localStorage.setItem('studytracker-profile:' + nk, JSON.stringify(prof)); } catch (x) {}
-    location.hash = ''; location.reload();
-  } else {
-    const a = ACCOUNTS.find(x => x.user === user); if (!a) return bad('No account with this email or username.');
-    if (await pwHash(d.pw || '', a.salt) !== a.hash) return bad('Wrong password.');
-    try { localStorage.setItem(SESSKEY, a.id); } catch (x) { return bad('This browser could not log you in.'); }
-    location.hash = ''; location.reload();
-  }
-});
-document.addEventListener('click', e => {
-  const el = e.target.closest('[data-xact]'); if (!el) return; const a = el.dataset.xact;
-  if (a === 'authmode') { AUTHMODE = el.dataset.m; render(); }
-  else if (a === 'logout') { try { localStorage.removeItem(SESSKEY); } catch (x) {} location.hash = ''; location.reload(); }
-});
-const EYE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
-const EYEOFF = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 5c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
-function pwField(id, name, label, ac) {
-  return '<div class="field"><label for="' + id + '">' + label + '</label><div style="position:relative"><input id="' + id + '" name="' + name + '" type="password" autocomplete="' + ac + '" required style="padding-right:46px"><button type="button" data-xact="pwtoggle" aria-label="Show password" aria-pressed="false" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;padding:6px;cursor:pointer;color:#4A5468;display:flex;align-items:center">' + EYE + '</button></div></div>';
-}
-document.addEventListener('click', e => {
-  const el = e.target.closest('[data-xact="pwtoggle"]'); if (!el) return;
-  const inp = el.parentElement.querySelector('input'); const show = inp.type === 'password';
-  inp.type = show ? 'text' : 'password'; el.innerHTML = show ? EYEOFF : EYE;
-  el.setAttribute('aria-label', show ? 'Hide password' : 'Show password'); el.setAttribute('aria-pressed', show ? 'true' : 'false');
-});
 /* ---------- events ---------- */
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
@@ -1195,7 +1125,7 @@ document.addEventListener('submit', e => {
     if (!isDate(d.date) || !d.what) return;
     S.mistakes.push({ id: uid(), date: d.date, subj: d.subj, paper: d.paper || '', topic: d.topic || '', code: d.code, what: d.what, fix: d.fix || '', retested: false });
     touch();
-  } else if (kind === 'settings') {
+  } else if (kind === 'prefs') {
     S.settings.examDate = isDate(d.examDate) ? d.examDate : '';
     S.settings.weeklyHours = Number(d.weeklyHours) || 15; S.settings.dailyMins = Number(d.dailyMins) || 120;
     save();
